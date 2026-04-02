@@ -42,6 +42,7 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.214.0",
     "@opentelemetry/sdk-node": "^0.214.0",
     "@opentelemetry/sdk-trace-base": "^2.6.1",
+    "@scalar/nestjs-api-reference": "^1.1.5",
     "@willsoto/nestjs-prometheus": "^6.1.0",
     "cache-manager": "^7.2.8",
     "class-transformer": "^0.5.1",
@@ -58,7 +59,6 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "sanitize-html": "^2.17.2",
-    "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.28"
   },
   "devDependencies": {
@@ -75,7 +75,6 @@
     "@types/node": "^25.5.0",
     "@types/sanitize-html": "^2.16.1",
     "@types/supertest": "^7.2.0",
-    "@types/swagger-ui-express": "^4.1.8",
     "audit-ci": "^7.1.0",
     "chokidar": "^5.0.0",
     "eslint": "^10.1.0",
