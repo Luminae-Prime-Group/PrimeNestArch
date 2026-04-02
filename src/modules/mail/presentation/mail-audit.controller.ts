@@ -29,6 +29,7 @@ import { MailPreviewDto } from '../dto/mail-preview.dto';
 import { MailScheduleDto } from '../dto/mail-schedule.dto';
 import { MailSendDto } from '../dto/mail-send.dto';
 import { MailSendTemplateDto } from '../dto/mail-send-template.dto';
+import { MailSuppressionDto } from '../dto/mail-suppression.dto';
 import { MailAuditViewDto, PaginatedMailAuditResponseDto } from './dto/mail-audit-response.dto';
 
 @ApiTags('Mail')
@@ -186,6 +187,41 @@ export class MailAuditController {
       priority: dto.priority,
       scheduledAt,
     });
+  }
+
+  @ApiOperation({ summary: 'Add recipient to suppression/unsubscribe list' })
+  @ApiBody({ type: MailSuppressionDto })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        email: { type: 'string' },
+        active: { type: 'boolean' },
+        source: { type: 'string' },
+        reason: { type: 'string', nullable: true },
+      },
+    },
+  })
+  @Post('suppression')
+  async suppress(@Body() dto: MailSuppressionDto) {
+    return this.mailService.suppressRecipient(dto.email, dto.reason, dto.source);
+  }
+
+  @ApiOperation({ summary: 'Remove recipient from suppression/unsubscribe list' })
+  @ApiParam({ name: 'email', type: String })
+  @ApiOkResponse({ schema: { type: 'object', properties: { updated: { type: 'boolean' } } } })
+  @Post('suppression/:email/remove')
+  async unsuppress(@Param('email') email: string) {
+    return this.mailService.unsuppressRecipient(email);
+  }
+
+  @ApiOperation({ summary: 'List active suppression/unsubscribe entries' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @Get('suppression')
+  async listSuppression(@Query('limit') limit?: string) {
+    const normalizedLimit = limit ? parseInt(limit, 10) : 100;
+    return this.mailService.listSuppressed(Number.isNaN(normalizedLimit) ? 100 : normalizedLimit);
   }
 
   @ApiOperation({

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { MailService } from './mail.service';
 import { MailEnqueueService } from './application/mail-enqueue.service';
 import { MailAuditQueryService } from './application/mail-audit-query.service';
+import { MailSuppressionService } from './application/mail-suppression.service';
 import { MailTemplateService } from './infrastructure/mail-template.service';
 import { MailAuditLogEntity, MailAuditStatus, MailPriority } from './entities/mail-audit-log.entity';
 
@@ -11,6 +12,9 @@ const mockFindById = jest.fn();
 const mockSearch = jest.fn();
 const mockRenderCached = jest.fn();
 const mockRender = jest.fn();
+const mockSuppress = jest.fn();
+const mockUnsuppress = jest.fn();
+const mockListSuppressed = jest.fn();
 
 const fakeAudit = (): Partial<MailAuditLogEntity> => ({
   id: 'audit-1',
@@ -33,6 +37,14 @@ describe('MailService', () => {
           useValue: { findById: mockFindById, listRecent: jest.fn(), search: mockSearch },
         },
         { provide: MailTemplateService, useValue: { renderCached: mockRenderCached, render: mockRender } },
+        {
+          provide: MailSuppressionService,
+          useValue: {
+            suppress: mockSuppress,
+            unsuppress: mockUnsuppress,
+            listActive: mockListSuppressed,
+          },
+        },
       ],
     }).compile();
     service = module.get(MailService);
@@ -100,5 +112,19 @@ describe('MailService', () => {
     mockSearch.mockResolvedValue({ items: [], total: 0, page: 1, limit: 10, totalPages: 0 });
     await service.searchAudit(opts);
     expect(mockSearch).toHaveBeenCalledWith(opts);
+  });
+
+  it('suppression helpers delegate to suppression service', async () => {
+    mockSuppress.mockResolvedValue({ email: 'user@example.com', active: true });
+    mockUnsuppress.mockResolvedValue({ updated: true });
+    mockListSuppressed.mockResolvedValue([{ email: 'user@example.com', active: true }]);
+
+    await service.suppressRecipient('user@example.com', 'manual', 'admin');
+    await service.unsuppressRecipient('user@example.com');
+    await service.listSuppressed(10);
+
+    expect(mockSuppress).toHaveBeenCalledWith('user@example.com', 'manual', 'admin');
+    expect(mockUnsuppress).toHaveBeenCalledWith('user@example.com');
+    expect(mockListSuppressed).toHaveBeenCalledWith(10);
   });
 });
