@@ -83,6 +83,7 @@ export const envValidationSchema = Joi.object({
   MAIL_RETRY_BASE_DELAY_MS: Joi.number().integer().min(1000).default(10000),
   MAIL_IDEMPOTENCY_TTL_SEC: Joi.number().integer().min(60).default(3600),
   MAIL_TEMPLATE_CACHE_TTL_SEC: Joi.number().integer().min(10).default(300),
+  MAIL_WEBHOOK_SECRET: Joi.string().min(16).allow('').optional(),
   DB_HOST: Joi.string().hostname().default('localhost'),
   DB_PORT: Joi.number().port().default(5432),
   DB_USERNAME: Joi.when('NODE_ENV', {

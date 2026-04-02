@@ -6,3 +6,4 @@ export { MailRateLimitService } from './mail-rate-limit.service';
 export { MailAuditService } from './mail-audit.service';
 export { MailRetryService } from './mail-retry.service';
 export { MailSuppressionService } from './mail-suppression.service';
+export { MailWebhookService } from './mail-webhook.service';

@@ -50,6 +50,7 @@ export default () => ({
     retryBaseDelayMs: parseInt(process.env.MAIL_RETRY_BASE_DELAY_MS ?? '10000', 10),
     idempotencyTtlSec: parseInt(process.env.MAIL_IDEMPOTENCY_TTL_SEC ?? '3600', 10),
     templateCacheTtlSec: parseInt(process.env.MAIL_TEMPLATE_CACHE_TTL_SEC ?? '300', 10),
+    webhookSecret: process.env.MAIL_WEBHOOK_SECRET || undefined,
   },
   database: {
     host: process.env.DB_HOST ?? 'localhost',

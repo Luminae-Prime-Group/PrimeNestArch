@@ -10,6 +10,7 @@ import { MailRateLimitService } from './application/mail-rate-limit.service';
 import { MailAuditService } from './application/mail-audit.service';
 import { MailRetryService } from './application/mail-retry.service';
 import { MailSuppressionService } from './application/mail-suppression.service';
+import { MailWebhookService } from './application/mail-webhook.service';
 import { MailDispatchService } from './infrastructure/mail-dispatch.service';
 import { MailJobClaimService } from './infrastructure/mail-job-claim.service';
 import { MailJobStateService } from './infrastructure/mail-job-state.service';
@@ -33,6 +34,7 @@ import { MailService } from './mail.service';
     MailAuditService,
     MailRetryService,
     MailSuppressionService,
+    MailWebhookService,
     MailEnqueueService,
     MailAuditQueryService,
     MailJobClaimService,

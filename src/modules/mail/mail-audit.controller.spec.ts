@@ -14,6 +14,7 @@ const mockScheduleAsync = jest.fn();
 const mockSuppressRecipient = jest.fn();
 const mockUnsuppressRecipient = jest.fn();
 const mockListSuppressed = jest.fn();
+const mockProcessDeliveryWebhook = jest.fn();
 const mockPreviewTemplate = jest.fn();
 
 const fakeAudit = (): Partial<MailAuditLogEntity> => ({
@@ -45,6 +46,7 @@ describe('MailAuditController', () => {
             suppressRecipient: mockSuppressRecipient,
             unsuppressRecipient: mockUnsuppressRecipient,
             listSuppressed: mockListSuppressed,
+            processDeliveryWebhook: mockProcessDeliveryWebhook,
             previewTemplate: mockPreviewTemplate,
           },
         },
@@ -171,6 +173,29 @@ describe('MailAuditController', () => {
     expect(mockSuppressRecipient).toHaveBeenCalledWith('user@example.com', undefined, undefined);
     expect(mockUnsuppressRecipient).toHaveBeenCalledWith('user@example.com');
     expect(mockListSuppressed).toHaveBeenCalledWith(10);
+  });
+
+  it('webhook rejects invalid secret when configured', async () => {
+    configService.get.mockImplementation((key: string) =>
+      key === 'mail.webhookSecret' ? 'secret-1234567890' : 'development',
+    );
+    await expect(
+      controller.deliveryWebhook({ event: 'delivered' }, 'wrong-secret'),
+    ).rejects.toThrow('Invalid webhook secret');
+  });
+
+  it('webhook delegates processing when secret is valid', async () => {
+    configService.get.mockImplementation((key: string) =>
+      key === 'mail.webhookSecret' ? 'secret-1234567890' : 'development',
+    );
+    mockProcessDeliveryWebhook.mockResolvedValue(fakeAudit());
+
+    await controller.deliveryWebhook(
+      { event: 'delivered', auditId: 'f3d6e1d2-5a2e-4b98-9958-8f8cd4d13333' },
+      'secret-1234567890',
+    );
+
+    expect(mockProcessDeliveryWebhook).toHaveBeenCalled();
   });
 
   it('preview returns html in development', () => {

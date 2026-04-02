@@ -3,6 +3,7 @@ import { MailService } from './mail.service';
 import { MailEnqueueService } from './application/mail-enqueue.service';
 import { MailAuditQueryService } from './application/mail-audit-query.service';
 import { MailSuppressionService } from './application/mail-suppression.service';
+import { MailWebhookService } from './application/mail-webhook.service';
 import { MailTemplateService } from './infrastructure/mail-template.service';
 import { MailAuditLogEntity, MailAuditStatus, MailPriority } from './entities/mail-audit-log.entity';
 
@@ -15,6 +16,7 @@ const mockRender = jest.fn();
 const mockSuppress = jest.fn();
 const mockUnsuppress = jest.fn();
 const mockListSuppressed = jest.fn();
+const mockProcessWebhook = jest.fn();
 
 const fakeAudit = (): Partial<MailAuditLogEntity> => ({
   id: 'audit-1',
@@ -43,6 +45,12 @@ describe('MailService', () => {
             suppress: mockSuppress,
             unsuppress: mockUnsuppress,
             listActive: mockListSuppressed,
+          },
+        },
+        {
+          provide: MailWebhookService,
+          useValue: {
+            processDeliveryEvent: mockProcessWebhook,
           },
         },
       ],
@@ -126,5 +134,11 @@ describe('MailService', () => {
     expect(mockSuppress).toHaveBeenCalledWith('user@example.com', 'manual', 'admin');
     expect(mockUnsuppress).toHaveBeenCalledWith('user@example.com');
     expect(mockListSuppressed).toHaveBeenCalledWith(10);
+  });
+
+  it('processDeliveryWebhook delegates to webhook service', async () => {
+    mockProcessWebhook.mockResolvedValue(fakeAudit());
+    await service.processDeliveryWebhook({ event: 'delivered', auditId: 'audit-1' });
+    expect(mockProcessWebhook).toHaveBeenCalledWith({ event: 'delivered', auditId: 'audit-1' });
   });
 });
