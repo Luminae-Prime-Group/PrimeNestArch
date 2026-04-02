@@ -63,7 +63,7 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
-    "@types/node": "^22.10.7",
+    "@types/node": "^25.5.0",
     "@types/supertest": "^6.0.2",
     "audit-ci": "^7.1.0",
     "eslint": "^9.18.0",
