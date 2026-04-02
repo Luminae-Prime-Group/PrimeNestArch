@@ -1,6 +1,6 @@
-# PontoPrimeBackend
+# PrimeNestArch
 
-Secure and scalable NestJS starter focused on practical onboarding for open-source contributors.
+Opinionated NestJS 11 backend boilerplate with layered modular architecture, security baseline, observability, and automated tests — by [Luminae Prime Group](https://github.com/Luminae-Prime-Group).
 
 ## Features
 
@@ -126,7 +126,7 @@ export class ExampleNotifierService {
 	async sendWelcomeEmail(email: string, name: string) {
 		await this.mailService.sendTemplateAsync({
 			to: email,
-			subject: 'Welcome to PontoPrimeBackend',
+			subject: 'Welcome to PrimeNestArch',
 			template: '<h1>Ola, {{name}}!</h1><p>Sua conta foi criada com sucesso.</p>',
 			context: { name },
 			correlationId: 'user-signup-flow',
