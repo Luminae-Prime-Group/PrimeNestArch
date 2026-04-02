@@ -41,6 +41,11 @@ export const envValidationSchema = Joi.object({
     .default(false),
   THROTTLE_TTL_MS: Joi.number().integer().min(1000).default(60000),
   THROTTLE_LIMIT: Joi.number().integer().min(1).default(100),
+  API_TOKEN: Joi.when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().min(32).required(),
+    otherwise: Joi.string().min(16).default('dev-local-api-token-change-me'),
+  }),
   OTEL_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
   OTEL_EXPORTER_OTLP_ENDPOINT: Joi.string().uri().allow('').optional(),
   LOG_LEVEL: Joi.string().valid('fatal', 'error', 'warn', 'info', 'debug', 'trace').default('info'),
@@ -49,6 +54,35 @@ export const envValidationSchema = Joi.object({
     then: Joi.string().min(32).required(),
     otherwise: Joi.string().min(32).allow('').optional(),
   }),
+  CACHE_DEFAULT_TTL_SEC: Joi.number().integer().min(1).max(86_400).default(60),
+  CACHE_MAX_ITEMS: Joi.number().integer().min(100).max(1_000_000).default(10_000),
+  MAIL_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
+  MAIL_HOST: Joi.string().hostname().default('localhost'),
+  MAIL_PORT: Joi.number().port().default(587),
+  MAIL_SECURE: Joi.boolean().truthy('true').falsy('false').default(false),
+  MAIL_USER: Joi.string().allow('').default(''),
+  MAIL_PASSWORD: Joi.string().allow('').default(''),
+  MAIL_DEFAULT_FROM: Joi.string().email({ tlds: { allow: false } }).allow('').default(''),
+  MAIL_VERIFY_ON_STARTUP: Joi.boolean().truthy('true').falsy('false').default(false),
+  MAIL_POOL: Joi.boolean().truthy('true').falsy('false').default(true),
+  MAIL_MAX_CONNECTIONS: Joi.number().integer().min(1).max(50).default(5),
+  MAIL_MAX_MESSAGES: Joi.number().integer().min(1).max(1000).default(100),
+  MAIL_CONNECTION_TIMEOUT_MS: Joi.number().integer().min(1000).default(10000),
+  MAIL_GREETING_TIMEOUT_MS: Joi.number().integer().min(1000).default(10000),
+  MAIL_SOCKET_TIMEOUT_MS: Joi.number().integer().min(1000).default(15000),
+  MAIL_REQUIRE_TLS: Joi.boolean().truthy('true').falsy('false').default(true),
+  MAIL_REJECT_UNAUTHORIZED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(true),
+  MAIL_QUEUE_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
+  MAIL_QUEUE_POLL_INTERVAL_MS: Joi.number().integer().min(100).default(1000),
+  MAIL_QUEUE_BATCH_SIZE: Joi.number().integer().min(1).max(500).default(20),
+  MAIL_QUEUE_CONCURRENCY: Joi.number().integer().min(1).max(100).default(5),
+  MAIL_MAX_ATTEMPTS: Joi.number().integer().min(1).max(20).default(3),
+  MAIL_RETRY_BASE_DELAY_MS: Joi.number().integer().min(1000).default(10000),
+  MAIL_IDEMPOTENCY_TTL_SEC: Joi.number().integer().min(60).default(3600),
+  MAIL_TEMPLATE_CACHE_TTL_SEC: Joi.number().integer().min(10).default(300),
   DB_HOST: Joi.string().hostname().default('localhost'),
   DB_PORT: Joi.number().port().default(5432),
   DB_USERNAME: Joi.when('NODE_ENV', {
@@ -73,4 +107,18 @@ export const envValidationSchema = Joi.object({
   DB_SSL_CA: Joi.string().allow('').optional(),
   DB_RETRY_ATTEMPTS: Joi.number().integer().min(1).default(5),
   DB_RETRY_DELAY_MS: Joi.number().integer().min(100).default(3000),
+}).custom((value, helpers) => {
+  if (value.MAIL_ENABLED && value.NODE_ENV === 'production') {
+    if (!value.MAIL_DEFAULT_FROM) {
+      return helpers.error('any.invalid');
+    }
+    if (!value.MAIL_USER || !value.MAIL_PASSWORD) {
+      return helpers.error('any.invalid');
+    }
+    if (!value.MAIL_HOST) {
+      return helpers.error('any.invalid');
+    }
+  }
+
+  return value;
 });

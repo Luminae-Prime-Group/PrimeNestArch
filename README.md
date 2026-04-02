@@ -10,6 +10,7 @@ Secure and scalable NestJS starter focused on practical onboarding for open-sour
 - Structured logs with correlation id (`x-correlation-id`)
 - OpenTelemetry tracing toggle (`OTEL_ENABLED`)
 - Prometheus metrics endpoint (`/metrics`)
+- SMTP mail module with full DB audit, async queue, events, cache, and concurrency controls
 - Formal health/readiness endpoints (`/api/health/live`, `/api/health/ready`)
 - Helmet + CSRF + CORS allowlist
 - Global request validation and throttling
@@ -65,6 +66,7 @@ API base URL: `http://localhost:3000/api`
 
 ## Security Baseline
 
+- Global API token required on every route (`x-api-token` or `Authorization: Bearer <token>`)
 - Disable `x-powered-by`
 - Global `ValidationPipe` (`transform`, `whitelist`, `forbidNonWhitelisted`)
 - Global throttling (`@nestjs/throttler`)
@@ -78,6 +80,49 @@ API base URL: `http://localhost:3000/api`
 - Readiness: `GET /api/health/ready`
 - Correlation ID header propagated in requests/responses
 - Tracing can be enabled through `OTEL_ENABLED=true`
+
+Example authenticated request:
+
+```bash
+curl -H "x-api-token: $API_TOKEN" http://localhost:3000/api/health/live
+```
+
+## Mail Module
+
+- Provider: `MailService` (global module)
+- Full DB audit trail in `mail_audit_logs` for each message lifecycle
+- Async queue processor with configurable polling, batch size, and concurrency
+- Retry strategy with backoff and max attempts (`MAIL_MAX_ATTEMPTS`, `MAIL_RETRY_BASE_DELAY_MS`)
+- Idempotency support with cache (`MAIL_IDEMPOTENCY_TTL_SEC`)
+- Template rendering cache (`MAIL_TEMPLATE_CACHE_TTL_SEC`)
+- Domain events: queued, processing, sent, failed
+- SMTP transport with pooling (`MAIL_POOL`) and connection limits
+- Startup verification toggle (`MAIL_VERIFY_ON_STARTUP`)
+
+Example service usage:
+
+```ts
+import { Injectable } from '@nestjs/common';
+import { MailService } from './mail/mail.service';
+
+@Injectable()
+export class ExampleNotifierService {
+	constructor(private readonly mailService: MailService) {}
+
+	async sendWelcomeEmail(email: string, name: string) {
+		await this.mailService.sendTemplateAsync({
+			to: email,
+			subject: 'Welcome to PontoPrimeBackend',
+			template: '<h1>Ola, {{name}}!</h1><p>Sua conta foi criada com sucesso.</p>',
+			context: { name },
+			correlationId: 'user-signup-flow',
+			idempotencyKey: `welcome-${email}`,
+			metadata: { channel: 'onboarding', feature: 'signup' },
+			maxAttempts: 5,
+		});
+	}
+}
+```
 
 ## CI
 

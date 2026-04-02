@@ -31,6 +31,11 @@ async function bootstrap() {
   const trustProxy = configService.get<boolean>('app.trustProxy', false);
   const logLevel = configService.get<string>('observability.logLevel', 'info');
   const metricsToken = configService.get<string | undefined>('observability.metricsToken');
+  const apiToken = configService.get<string>('security.apiToken', '');
+
+  if (!apiToken) {
+    throw new Error('API_TOKEN is required.');
+  }
 
   if (runtimeNodeEnv === 'production' && corsOriginsRaw.includes('*')) {
     throw new Error('CORS_ORIGINS must not contain * in production');
@@ -77,8 +82,41 @@ async function bootstrap() {
     origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token', 'x-correlation-id'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'x-api-token',
+      'x-csrf-token',
+      'x-correlation-id',
+    ],
     exposedHeaders: ['x-correlation-id'],
+  });
+
+  app.use((req: Request, res: Response, next) => {
+    const directToken = req.header('x-api-token')?.trim();
+    const authorization = req.header('authorization')?.trim();
+    const bearerPrefix = 'Bearer ';
+    const bearerToken =
+      authorization && authorization.startsWith(bearerPrefix)
+        ? authorization.slice(bearerPrefix.length).trim()
+        : undefined;
+
+    const candidate = directToken || bearerToken;
+    const isValid =
+      !!candidate &&
+      candidate.length === apiToken.length &&
+      timingSafeEqual(Buffer.from(candidate, 'utf8'), Buffer.from(apiToken, 'utf8'));
+
+    if (!isValid) {
+      res.status(401).json({
+        statusCode: 401,
+        error: 'Unauthorized',
+        message: 'Invalid API token',
+      });
+      return;
+    }
+
+    next();
   });
 
   app.useGlobalPipes(
