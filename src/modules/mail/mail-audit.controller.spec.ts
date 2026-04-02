@@ -8,6 +8,9 @@ import { MailAuditLogEntity, MailAuditStatus, MailPriority } from './entities/ma
 const mockSearch = jest.fn();
 const mockFindById = jest.fn();
 const mockRetryFailed = jest.fn();
+const mockSendAsync = jest.fn();
+const mockSendTemplateAsync = jest.fn();
+const mockScheduleAsync = jest.fn();
 const mockPreviewTemplate = jest.fn();
 
 const fakeAudit = (): Partial<MailAuditLogEntity> => ({
@@ -33,6 +36,9 @@ describe('MailAuditController', () => {
             searchAudit: mockSearch,
             findAuditById: mockFindById,
             retryFailed: mockRetryFailed,
+            sendAsync: mockSendAsync,
+            sendTemplateAsync: mockSendTemplateAsync,
+            scheduleAsync: mockScheduleAsync,
             previewTemplate: mockPreviewTemplate,
           },
         },
@@ -80,6 +86,71 @@ describe('MailAuditController', () => {
     mockRetryFailed.mockResolvedValue(fakeAudit());
     await controller.retry('audit-1');
     expect(mockRetryFailed).toHaveBeenCalledWith('audit-1');
+  });
+
+  it('send delegates to mailService.sendAsync', async () => {
+    mockSendAsync.mockResolvedValue(fakeAudit());
+    const payload = {
+      to: ['user@example.com'],
+      subject: 'Welcome',
+      text: 'Hello',
+    };
+
+    await controller.send(payload);
+
+    expect(mockSendAsync).toHaveBeenCalledWith(expect.objectContaining(payload));
+  });
+
+  it('send throws when text and html are both missing', async () => {
+    await expect(
+      controller.send({ to: ['user@example.com'], subject: 'Welcome' } as any),
+    ).rejects.toThrow('At least one content format');
+  });
+
+  it('sendTemplate delegates to mailService.sendTemplateAsync', async () => {
+    mockSendTemplateAsync.mockResolvedValue(fakeAudit());
+    const payload = {
+      to: ['user@example.com'],
+      subject: 'Welcome',
+      template: '<h1>Hello {{name}}</h1>',
+      context: { name: 'Giovani' },
+    };
+
+    await controller.sendTemplate(payload);
+
+    expect(mockSendTemplateAsync).toHaveBeenCalledWith(expect.objectContaining(payload));
+  });
+
+  it('schedule delegates to mailService.scheduleAsync with parsed date', async () => {
+    mockScheduleAsync.mockResolvedValue(fakeAudit());
+    const payload = {
+      to: ['user@example.com'],
+      subject: 'Scheduled email',
+      text: 'Hello',
+      scheduledFor: '2099-04-02T22:30:00.000Z',
+    };
+
+    await controller.schedule(payload);
+
+    expect(mockScheduleAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: payload.to,
+        subject: payload.subject,
+        text: payload.text,
+        scheduledAt: expect.any(Date),
+      }),
+    );
+  });
+
+  it('schedule throws when scheduledFor is not in the future', async () => {
+    await expect(
+      controller.schedule({
+        to: ['user@example.com'],
+        subject: 'Scheduled email',
+        text: 'Hello',
+        scheduledFor: '2000-01-01T00:00:00.000Z',
+      } as any),
+    ).rejects.toThrow('scheduledFor must be a future date-time');
   });
 
   it('preview returns html in development', () => {

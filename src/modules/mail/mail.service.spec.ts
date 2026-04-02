@@ -46,6 +46,18 @@ describe('MailService', () => {
     expect(result).toMatchObject({ id: 'audit-1' });
   });
 
+  it('scheduleAsync delegates to enqueueService.enqueue', async () => {
+    mockEnqueue.mockResolvedValue(fakeAudit());
+    const result = await service.scheduleAsync({
+      to: 'a@b.com',
+      subject: 'scheduled',
+      text: 'body',
+      scheduledAt: new Date('2099-01-01T00:00:00.000Z'),
+    });
+    expect(mockEnqueue).toHaveBeenCalledWith(expect.objectContaining({ subject: 'scheduled' }));
+    expect(result).toMatchObject({ id: 'audit-1' });
+  });
+
   it('sendTemplateAsync renders template then enqueues', async () => {
     mockRenderCached.mockResolvedValue('<h1>Hello World</h1>');
     mockEnqueue.mockResolvedValue(fakeAudit());

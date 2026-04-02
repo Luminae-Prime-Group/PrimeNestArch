@@ -40,6 +40,7 @@ export type MailDispatchOptions = MailSendOptions & {
   metadata?: MailDispatchMetadata;
   maxAttempts?: number;
   priority?: MailPriority;
+  scheduledAt?: Date;
 };
 
 export type MailTemplateDispatchOptions = Omit<MailTemplateOptions, 'context'> & {

@@ -45,7 +45,7 @@ export class MailAuditService {
       attachments: normalizedAttachments,
       attempts: 0,
       maxAttempts,
-      nextAttemptAt: new Date(),
+      nextAttemptAt: options.scheduledAt ?? new Date(),
     });
 
     return this.repo.save(audit) as Promise<MailAuditLogEntity>;
