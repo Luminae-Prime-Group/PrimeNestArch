@@ -22,7 +22,7 @@ export type MailTemplateOptions = {
   to: MailRecipient;
   subject: string;
   template: string;
-  context?: Record<string, string | number | boolean>;
+  context?: Record<string, unknown>;
   cc?: MailRecipient;
   bcc?: MailRecipient;
   replyTo?: string;
@@ -32,11 +32,14 @@ export type MailTemplateOptions = {
 
 export type MailDispatchMetadata = Record<string, string | number | boolean>;
 
+export type MailPriority = 'high' | 'normal' | 'low';
+
 export type MailDispatchOptions = MailSendOptions & {
   correlationId?: string;
   idempotencyKey?: string;
   metadata?: MailDispatchMetadata;
   maxAttempts?: number;
+  priority?: MailPriority;
 };
 
 export type MailTemplateDispatchOptions = Omit<MailTemplateOptions, 'context'> & {
@@ -44,11 +47,13 @@ export type MailTemplateDispatchOptions = Omit<MailTemplateOptions, 'context'> &
   idempotencyKey?: string;
   metadata?: MailDispatchMetadata;
   maxAttempts?: number;
-  context?: Record<string, string | number | boolean>;
+  priority?: MailPriority;
+  context?: Record<string, unknown>;
 };
 
 export type MailAuditQueryOptions = {
   status?: 'pending' | 'processing' | 'sent' | 'failed';
+  priority?: MailPriority;
   correlationId?: string;
   idempotencyKey?: string;
   recipient?: string;
