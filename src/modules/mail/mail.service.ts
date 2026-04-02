@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { MailQueueService } from './mail.queue.service';
+import { MailEnqueueService } from './application/mail-enqueue.service';
+import { MailAuditQueryService } from './application/mail-audit-query.service';
+import { MailTemplateService } from './infrastructure/mail-template.service';
 import { type MailAuditLogEntity } from './entities/mail-audit-log.entity';
 import {
   type MailDispatchOptions,
@@ -10,19 +12,22 @@ import {
 
 @Injectable()
 export class MailService {
-  constructor(private readonly mailQueueService: MailQueueService) {}
+  constructor(
+    private readonly enqueueService: MailEnqueueService,
+    private readonly auditQueryService: MailAuditQueryService,
+    private readonly templateService: MailTemplateService,
+  ) {}
 
   async sendAsync(options: MailDispatchOptions): Promise<MailAuditLogEntity> {
-    return this.mailQueueService.enqueue(options);
+    return this.enqueueService.enqueue(options);
   }
 
   async sendTemplateAsync(options: MailTemplateDispatchOptions): Promise<MailAuditLogEntity> {
-    const renderedHtml = await this.mailQueueService.renderTemplateCached(
+    const renderedHtml = await this.templateService.renderCached(
       options.template,
       options.context ?? {},
     );
-
-    return this.mailQueueService.enqueue({
+    return this.enqueueService.enqueue({
       to: options.to,
       subject: options.subject,
       html: renderedHtml,
@@ -35,18 +40,31 @@ export class MailService {
       idempotencyKey: options.idempotencyKey,
       metadata: options.metadata,
       maxAttempts: options.maxAttempts,
+      priority: options.priority,
     });
   }
 
+  async retryFailed(id: string): Promise<MailAuditLogEntity> {
+    return this.enqueueService.requeue(id);
+  }
+
+  previewTemplate(
+    template: string,
+    context: Record<string, unknown>,
+  ): { html: string } {
+    const html = this.templateService.render(template, context);
+    return { html };
+  }
+
   async findAuditById(id: string, includeContent = false): Promise<MailAuditLogEntity | null> {
-    return this.mailQueueService.getAuditById(id, includeContent);
+    return this.auditQueryService.findById(id, includeContent);
   }
 
   async listRecentAudit(limit = 50): Promise<MailAuditLogEntity[]> {
-    return this.mailQueueService.listRecent(limit);
+    return this.auditQueryService.listRecent(limit);
   }
 
   async searchAudit(options: MailAuditQueryOptions): Promise<PaginatedMailAuditResponse> {
-    return this.mailQueueService.searchAudit(options);
+    return this.auditQueryService.search(options);
   }
 }

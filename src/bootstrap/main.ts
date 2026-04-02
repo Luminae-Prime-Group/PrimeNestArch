@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import type { Request, Response } from 'express';
 import helmet from 'helmet';
@@ -194,6 +195,17 @@ async function bootstrap() {
   );
 
   await app.listen(port);
+
+  if (runtimeNodeEnv !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('PrimeNestArch API')
+      .setDescription('REST API — available only in non-production environments')
+      .setVersion(process.env.npm_package_version ?? '0.1.0')
+      .addApiKey({ type: 'apiKey', in: 'header', name: 'x-api-token' }, 'api-token')
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup(`${globalPrefix}/docs`, app, document);
+  }
 
   const gracefulShutdown = async () => {
     await shutdownTracing();

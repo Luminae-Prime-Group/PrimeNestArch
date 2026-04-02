@@ -14,9 +14,16 @@ export enum MailAuditStatus {
   FAILED = 'failed',
 }
 
+export enum MailPriority {
+  HIGH = 'high',
+  NORMAL = 'normal',
+  LOW = 'low',
+}
+
 @Entity({ name: 'mail_audit_logs' })
 @Index('idx_mail_audit_status_next_attempt', ['status', 'nextAttemptAt'])
 @Index('idx_mail_audit_correlation_id', ['correlationId'])
+@Index('idx_mail_audit_priority_claim', ['priority', 'status', 'nextAttemptAt'])
 export class MailAuditLogEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -29,6 +36,9 @@ export class MailAuditLogEntity {
 
   @Column({ type: 'enum', enum: MailAuditStatus, default: MailAuditStatus.PENDING })
   status!: MailAuditStatus;
+
+  @Column({ type: 'enum', enum: MailPriority, default: MailPriority.NORMAL })
+  priority!: MailPriority;
 
   @Column({ type: 'simple-json' })
   toRecipients!: string[];

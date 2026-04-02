@@ -10,12 +10,16 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { MailAuditStatus } from '../entities/mail-audit-log.entity';
+import { MailAuditStatus, MailPriority } from '../entities/mail-audit-log.entity';
 
 export class MailAuditQueryDto {
   @IsOptional()
   @IsEnum(MailAuditStatus)
   status?: MailAuditStatus;
+
+  @IsOptional()
+  @IsEnum(MailPriority)
+  priority?: MailPriority;
 
   @IsOptional()
   @IsString()
