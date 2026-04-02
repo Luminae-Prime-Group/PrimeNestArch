@@ -10,6 +10,11 @@ import { APP_CONSTANTS } from '../../shared/constants';
  */
 export function createApiTokenMiddleware(apiToken: string) {
   return (req: Request, res: Response, next: NextFunction) => {
+    if (isMailWebhookRequest(req)) {
+      next();
+      return;
+    }
+
     const directTokenRaw = req.header(APP_CONSTANTS.HEADERS.API_TOKEN);
     const authorizationRaw = req.header(APP_CONSTANTS.HEADERS.AUTHORIZATION);
     
@@ -32,6 +37,11 @@ export function createApiTokenMiddleware(apiToken: string) {
 
     next();
   };
+}
+
+function isMailWebhookRequest(req: Request): boolean {
+  const url = req.originalUrl ?? req.url;
+  return req.method.toUpperCase() === 'POST' && url.includes('/mail/webhooks/delivery');
 }
 
 /**

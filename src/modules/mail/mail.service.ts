@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { MailEnqueueService } from './application/mail-enqueue.service';
 import { MailAuditQueryService } from './application/mail-audit-query.service';
 import { MailSuppressionService } from './application/mail-suppression.service';
+import { MailWebhookService, type MailDeliveryWebhookInput } from './application/mail-webhook.service';
 import { MailTemplateService } from './infrastructure/mail-template.service';
 import { type MailAuditLogEntity } from './entities/mail-audit-log.entity';
 import { MailSuppressionEntity } from './entities/mail-suppression.entity';
@@ -19,6 +20,7 @@ export class MailService {
     private readonly auditQueryService: MailAuditQueryService,
     private readonly templateService: MailTemplateService,
     private readonly suppressionService: MailSuppressionService,
+    private readonly webhookService: MailWebhookService,
   ) {}
 
   async sendAsync(options: MailDispatchOptions): Promise<MailAuditLogEntity> {
@@ -39,6 +41,10 @@ export class MailService {
 
   async listSuppressed(limit = 100): Promise<MailSuppressionEntity[]> {
     return this.suppressionService.listActive(limit);
+  }
+
+  async processDeliveryWebhook(input: MailDeliveryWebhookInput): Promise<MailAuditLogEntity> {
+    return this.webhookService.processDeliveryEvent(input);
   }
 
   async sendTemplateAsync(options: MailTemplateDispatchOptions): Promise<MailAuditLogEntity> {

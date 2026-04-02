@@ -10,6 +10,11 @@ import { timingSafeEqual } from 'node:crypto';
  */
 export function createCsrfValidationMiddleware() {
   return (req: Request, res: Response, next: NextFunction) => {
+    if (isMailWebhookRequest(req)) {
+      next();
+      return;
+    }
+
     const isSafeMethod = ['GET', 'HEAD', 'OPTIONS'].includes(
       req.method.toUpperCase(),
     );
@@ -33,6 +38,11 @@ export function createCsrfValidationMiddleware() {
 
     next();
   };
+}
+
+function isMailWebhookRequest(req: Request): boolean {
+  const url = req.originalUrl ?? req.url;
+  return req.method.toUpperCase() === 'POST' && url.includes('/mail/webhooks/delivery');
 }
 
 /**

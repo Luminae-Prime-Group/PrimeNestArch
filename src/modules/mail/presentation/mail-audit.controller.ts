@@ -3,11 +3,13 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
   Query,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -26,6 +28,7 @@ import {
 import { MailService } from '../mail.service';
 import { MailAuditQueryDto } from '../dto/mail-audit-query.dto';
 import { MailPreviewDto } from '../dto/mail-preview.dto';
+import { MailDeliveryWebhookDto } from '../dto/mail-delivery-webhook.dto';
 import { MailScheduleDto } from '../dto/mail-schedule.dto';
 import { MailSendDto } from '../dto/mail-send.dto';
 import { MailSendTemplateDto } from '../dto/mail-send-template.dto';
@@ -222,6 +225,29 @@ export class MailAuditController {
   async listSuppression(@Query('limit') limit?: string) {
     const normalizedLimit = limit ? parseInt(limit, 10) : 100;
     return this.mailService.listSuppressed(Number.isNaN(normalizedLimit) ? 100 : normalizedLimit);
+  }
+
+  @ApiOperation({ summary: 'Mail delivery webhook (provider -> system)' })
+  @ApiBody({ type: MailDeliveryWebhookDto })
+  @ApiOkResponse({ schema: { type: 'object', properties: { accepted: { type: 'boolean' } } } })
+  @Post('webhooks/delivery')
+  async deliveryWebhook(
+    @Body() dto: MailDeliveryWebhookDto,
+    @Headers('x-mail-webhook-secret') providedSecret?: string,
+  ) {
+    const webhookSecret = this.configService.get<string | undefined>('mail.webhookSecret');
+    if (webhookSecret && providedSecret !== webhookSecret) {
+      throw new UnauthorizedException('Invalid webhook secret.');
+    }
+
+    await this.mailService.processDeliveryWebhook({
+      event: dto.event,
+      auditId: dto.auditId,
+      providerMessageId: dto.providerMessageId,
+      error: dto.error,
+    });
+
+    return { accepted: true };
   }
 
   @ApiOperation({
