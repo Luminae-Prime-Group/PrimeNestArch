@@ -10,17 +10,26 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  ApiBearerAuth,
   ApiBody,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiQuery,
+  ApiSecurity,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { MailService } from '../mail.service';
 import { MailAuditQueryDto } from '../dto/mail-audit-query.dto';
 import { MailPreviewDto } from '../dto/mail-preview.dto';
+import { MailAuditViewDto, PaginatedMailAuditResponseDto } from './dto/mail-audit-response.dto';
 
 @ApiTags('Mail')
+@ApiSecurity('api-token')
+@ApiBearerAuth('api-token-bearer')
 @Controller('mail')
 export class MailAuditController {
   constructor(
@@ -39,6 +48,8 @@ export class MailAuditController {
   @ApiQuery({ name: 'sortBy', required: false, type: String })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'] })
   @ApiQuery({ name: 'includeContent', required: false, type: Boolean })
+  @ApiOkResponse({ type: PaginatedMailAuditResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid API token.' })
   @Get('audit')
   async list(@Query() query: MailAuditQueryDto) {
     return this.mailService.searchAudit({
@@ -61,6 +72,9 @@ export class MailAuditController {
   @ApiOperation({ summary: 'Get mail audit log by ID' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @ApiQuery({ name: 'includeContent', required: false, type: Boolean })
+  @ApiOkResponse({ type: MailAuditViewDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid API token.' })
+  @ApiNotFoundResponse({ description: 'Mail audit log was not found.' })
   @Get('audit/:id')
   async detail(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -72,6 +86,10 @@ export class MailAuditController {
 
   @ApiOperation({ summary: 'Retry a FAILED mail by re-enqueuing it' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
+  @ApiOkResponse({ type: MailAuditViewDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid API token.' })
+  @ApiForbiddenResponse({ description: 'CSRF token is missing or invalid for this unsafe request.' })
+  @ApiNotFoundResponse({ description: 'Mail audit log was not found.' })
   @Post('audit/:id/retry')
   async retry(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.mailService.retryFailed(id);
@@ -84,6 +102,20 @@ export class MailAuditController {
       'Only available when NODE_ENV is not "production".',
   })
   @ApiBody({ type: MailPreviewDto })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        html: {
+          type: 'string',
+          example: '<h1>Hello Giovani</h1><p>Your account is active.</p>',
+        },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid API token.' })
+  @ApiForbiddenResponse({ description: 'CSRF token is missing or invalid for this unsafe request.' })
+  @ApiNotFoundResponse({ description: 'Preview endpoint is hidden in production.' })
   @Post('preview')
   preview(@Body() dto: MailPreviewDto) {
     const nodeEnv = this.configService.get<string>('app.nodeEnv', 'development');
