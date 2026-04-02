@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -25,6 +26,9 @@ import {
 import { MailService } from '../mail.service';
 import { MailAuditQueryDto } from '../dto/mail-audit-query.dto';
 import { MailPreviewDto } from '../dto/mail-preview.dto';
+import { MailScheduleDto } from '../dto/mail-schedule.dto';
+import { MailSendDto } from '../dto/mail-send.dto';
+import { MailSendTemplateDto } from '../dto/mail-send-template.dto';
 import { MailAuditViewDto, PaginatedMailAuditResponseDto } from './dto/mail-audit-response.dto';
 
 @ApiTags('Mail')
@@ -93,6 +97,95 @@ export class MailAuditController {
   @Post('audit/:id/retry')
   async retry(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.mailService.retryFailed(id);
+  }
+
+  @ApiOperation({ summary: 'Create and enqueue an email for asynchronous dispatch' })
+  @ApiBody({ type: MailSendDto })
+  @ApiOkResponse({ type: MailAuditViewDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid API token.' })
+  @ApiForbiddenResponse({ description: 'CSRF token is missing or invalid for this unsafe request.' })
+  @Post('send')
+  async send(@Body() dto: MailSendDto) {
+    if (!dto.text && !dto.html) {
+      throw new BadRequestException('At least one content format must be provided: text or html.');
+    }
+
+    return this.mailService.sendAsync({
+      to: dto.to,
+      subject: dto.subject,
+      text: dto.text,
+      html: dto.html,
+      cc: dto.cc,
+      bcc: dto.bcc,
+      replyTo: dto.replyTo,
+      from: dto.from,
+      attachments: dto.attachments,
+      correlationId: dto.correlationId,
+      idempotencyKey: dto.idempotencyKey,
+      metadata: dto.metadata,
+      maxAttempts: dto.maxAttempts,
+      priority: dto.priority,
+    });
+  }
+
+  @ApiOperation({ summary: 'Create and enqueue a template-based email for asynchronous dispatch' })
+  @ApiBody({ type: MailSendTemplateDto })
+  @ApiOkResponse({ type: MailAuditViewDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid API token.' })
+  @ApiForbiddenResponse({ description: 'CSRF token is missing or invalid for this unsafe request.' })
+  @Post('send-template')
+  async sendTemplate(@Body() dto: MailSendTemplateDto) {
+    return this.mailService.sendTemplateAsync({
+      to: dto.to,
+      subject: dto.subject,
+      template: dto.template,
+      context: dto.context,
+      cc: dto.cc,
+      bcc: dto.bcc,
+      replyTo: dto.replyTo,
+      from: dto.from,
+      attachments: dto.attachments,
+      correlationId: dto.correlationId,
+      idempotencyKey: dto.idempotencyKey,
+      metadata: dto.metadata,
+      maxAttempts: dto.maxAttempts,
+      priority: dto.priority,
+    });
+  }
+
+  @ApiOperation({ summary: 'Schedule an email for future asynchronous dispatch' })
+  @ApiBody({ type: MailScheduleDto })
+  @ApiOkResponse({ type: MailAuditViewDto })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid API token.' })
+  @ApiForbiddenResponse({ description: 'CSRF token is missing or invalid for this unsafe request.' })
+  @Post('schedule')
+  async schedule(@Body() dto: MailScheduleDto) {
+    if (!dto.text && !dto.html) {
+      throw new BadRequestException('At least one content format must be provided: text or html.');
+    }
+
+    const scheduledAt = new Date(dto.scheduledFor);
+    if (scheduledAt.getTime() <= Date.now()) {
+      throw new BadRequestException('scheduledFor must be a future date-time.');
+    }
+
+    return this.mailService.scheduleAsync({
+      to: dto.to,
+      subject: dto.subject,
+      text: dto.text,
+      html: dto.html,
+      cc: dto.cc,
+      bcc: dto.bcc,
+      replyTo: dto.replyTo,
+      from: dto.from,
+      attachments: dto.attachments,
+      correlationId: dto.correlationId,
+      idempotencyKey: dto.idempotencyKey,
+      metadata: dto.metadata,
+      maxAttempts: dto.maxAttempts,
+      priority: dto.priority,
+      scheduledAt,
+    });
   }
 
   @ApiOperation({

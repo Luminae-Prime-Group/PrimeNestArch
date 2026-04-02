@@ -22,6 +22,10 @@ export class MailService {
     return this.enqueueService.enqueue(options);
   }
 
+  async scheduleAsync(options: MailDispatchOptions): Promise<MailAuditLogEntity> {
+    return this.enqueueService.enqueue(options);
+  }
+
   async sendTemplateAsync(options: MailTemplateDispatchOptions): Promise<MailAuditLogEntity> {
     const renderedHtml = await this.templateService.renderCached(
       options.template,
