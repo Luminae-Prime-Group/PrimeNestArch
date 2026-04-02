@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { CacheModule } from '@nestjs/cache-manager';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TerminusModule } from '@nestjs/terminus';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -9,6 +11,7 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import configuration from './config/configuration';
 import { envValidationSchema } from './config/env.validation';
 import { HealthController } from './health/health.controller';
+import { MailModule } from './mail/mail.module';
 import { CsrfController } from './security/csrf.controller';
 
 @Module({
@@ -18,6 +21,17 @@ import { CsrfController } from './security/csrf.controller';
       load: [configuration],
       validationSchema: envValidationSchema,
       expandVariables: true,
+    }),
+    CacheModule.register({
+      isGlobal: true,
+      ttl: 60_000,
+      max: 10_000,
+    }),
+    EventEmitterModule.forRoot({
+      wildcard: false,
+      maxListeners: 50,
+      delimiter: '.',
+      verboseMemoryLeak: true,
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -58,6 +72,7 @@ import { CsrfController } from './security/csrf.controller';
       },
       path: 'metrics',
     }),
+    MailModule,
     TerminusModule,
     ScheduleModule.forRoot(),
   ],
