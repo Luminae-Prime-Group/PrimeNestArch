@@ -1,8 +1,8 @@
 {
-  "name": "server",
+  "name": "prime-nest-arch",
   "version": "0.1.0",
-  "description": "Secure and scalable NestJS backend starter",
-  "author": "",
+  "description": "PrimeNestArch — opinionated NestJS 11 backend boilerplate with layered modular architecture",
+  "author": "Luminae Prime Group",
   "private": false,
   "license": "MIT",
   "scripts": {
