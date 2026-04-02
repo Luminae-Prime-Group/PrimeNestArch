@@ -7,7 +7,9 @@ import { AppModule } from './app.module';
 import { CsrfExceptionFilter } from './security/csrf-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    snapshot: true,
+  });
   const configService = app.get(ConfigService);
   const nodeEnv = configService.get<string>('app.nodeEnv', 'development');
   const port = configService.get<number>('app.port', 3000);
