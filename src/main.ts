@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
 import csurf from 'csurf';
 import helmet from 'helmet';
@@ -7,7 +8,14 @@ import { CsrfExceptionFilter } from './security/csrf-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
+  const configService = app.get(ConfigService);
+  const nodeEnv = configService.get<string>('app.nodeEnv', 'development');
+  const port = configService.get<number>('app.port', 3000);
+  const corsOrigin = configService.get<string>('app.corsOrigin', '*');
+
+  app.enableCors({
+    origin: corsOrigin,
+  });
   app.use(cookieParser());
   app.use(
     csurf({
@@ -15,12 +23,12 @@ async function bootstrap() {
         key: '_csrf',
         httpOnly: true,
         sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
+        secure: nodeEnv === 'production',
       },
     }),
   );
   app.useGlobalFilters(new CsrfExceptionFilter());
   app.use(helmet());
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(port);
 }
 bootstrap();
