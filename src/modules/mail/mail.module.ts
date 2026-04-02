@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailAuditLogEntity } from './entities/mail-audit-log.entity';
+import { MailSuppressionEntity } from './entities/mail-suppression.entity';
 import { MailAuditQueryService } from './application/mail-audit-query.service';
 import { MailEnqueueService } from './application/mail-enqueue.service';
 import { MailValidationService } from './application/mail-validation.service';
@@ -8,6 +9,7 @@ import { MailIdempotencyService } from './application/mail-idempotency.service';
 import { MailRateLimitService } from './application/mail-rate-limit.service';
 import { MailAuditService } from './application/mail-audit.service';
 import { MailRetryService } from './application/mail-retry.service';
+import { MailSuppressionService } from './application/mail-suppression.service';
 import { MailDispatchService } from './infrastructure/mail-dispatch.service';
 import { MailJobClaimService } from './infrastructure/mail-job-claim.service';
 import { MailJobStateService } from './infrastructure/mail-job-state.service';
@@ -20,7 +22,7 @@ import { MailService } from './mail.service';
 
 @Global()
 @Module({
-  imports: [TypeOrmModule.forFeature([MailAuditLogEntity])],
+  imports: [TypeOrmModule.forFeature([MailAuditLogEntity, MailSuppressionEntity])],
   controllers: [MailAuditController],
   providers: [
     mailTransporterProvider,
@@ -30,6 +32,7 @@ import { MailService } from './mail.service';
     MailRateLimitService,
     MailAuditService,
     MailRetryService,
+    MailSuppressionService,
     MailEnqueueService,
     MailAuditQueryService,
     MailJobClaimService,

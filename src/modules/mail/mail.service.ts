@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { MailEnqueueService } from './application/mail-enqueue.service';
 import { MailAuditQueryService } from './application/mail-audit-query.service';
+import { MailSuppressionService } from './application/mail-suppression.service';
 import { MailTemplateService } from './infrastructure/mail-template.service';
 import { type MailAuditLogEntity } from './entities/mail-audit-log.entity';
+import { MailSuppressionEntity } from './entities/mail-suppression.entity';
 import {
   type MailDispatchOptions,
   type MailTemplateDispatchOptions,
@@ -16,6 +18,7 @@ export class MailService {
     private readonly enqueueService: MailEnqueueService,
     private readonly auditQueryService: MailAuditQueryService,
     private readonly templateService: MailTemplateService,
+    private readonly suppressionService: MailSuppressionService,
   ) {}
 
   async sendAsync(options: MailDispatchOptions): Promise<MailAuditLogEntity> {
@@ -24,6 +27,18 @@ export class MailService {
 
   async scheduleAsync(options: MailDispatchOptions): Promise<MailAuditLogEntity> {
     return this.enqueueService.enqueue(options);
+  }
+
+  async suppressRecipient(email: string, reason?: string, source?: string): Promise<MailSuppressionEntity> {
+    return this.suppressionService.suppress(email, reason, source);
+  }
+
+  async unsuppressRecipient(email: string): Promise<{ updated: boolean }> {
+    return this.suppressionService.unsuppress(email);
+  }
+
+  async listSuppressed(limit = 100): Promise<MailSuppressionEntity[]> {
+    return this.suppressionService.listActive(limit);
   }
 
   async sendTemplateAsync(options: MailTemplateDispatchOptions): Promise<MailAuditLogEntity> {

@@ -1,148 +1,128 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { MailEnqueueService } from './application/mail-enqueue.service';
-import { MailAuditLogEntity, MailAuditStatus, MailPriority } from './entities/mail-audit-log.entity';
+import { MailValidationService } from './application/mail-validation.service';
+import { MailIdempotencyService } from './application/mail-idempotency.service';
+import { MailRateLimitService } from './application/mail-rate-limit.service';
+import { MailAuditService } from './application/mail-audit.service';
+import { MailRetryService } from './application/mail-retry.service';
+import { MailSuppressionService } from './application/mail-suppression.service';
 
-const mockSave = jest.fn();
-const mockFindOne = jest.fn();
-const mockFindOneOrFail = jest.fn();
-const mockUpdate = jest.fn();
-const mockCreate = jest.fn((v) => v);
-const mockCacheGet = jest.fn();
-const mockCacheSet = jest.fn();
-const mockEmit = jest.fn();
+const mockValidateServiceEnabled = jest.fn();
+const mockValidateContentProvided = jest.fn();
+const mockValidateAndResolveSender = jest.fn();
+const mockNormalizeRecipients = jest.fn();
+const mockResolveMaxAttempts = jest.fn();
+const mockNormalizeAttachments = jest.fn();
 
-const makeAudit = (overrides: Partial<MailAuditLogEntity> = {}): MailAuditLogEntity =>
-  ({
-    id: 'audit-1',
-    status: MailAuditStatus.PENDING,
-    priority: MailPriority.NORMAL,
-    subject: 'Test',
-    toRecipients: ['user@example.com'],
-    fromAddress: 'no-reply@example.com',
-    attempts: 0,
-    maxAttempts: 3,
-    ...overrides,
-  }) as MailAuditLogEntity;
+const mockFindByIdempotencyKey = jest.fn();
+const mockCacheMail = jest.fn();
+const mockEnforceLimit = jest.fn();
+const mockCreateAuditLog = jest.fn();
+const mockPublishQueued = jest.fn();
+const mockRequeue = jest.fn();
+const mockEnsureRecipientsAreAllowed = jest.fn();
 
 describe('MailEnqueueService', () => {
   let service: MailEnqueueService;
-  let configGet: jest.Mock;
 
   beforeEach(async () => {
-    configGet = jest.fn((key: string, def: unknown) => {
-      const defaults: Record<string, unknown> = {
-        'mail.enabled': true,
-        'mail.defaultFrom': 'no-reply@example.com',
-        'mail.maxAttempts': 3,
-        'mail.idempotencyTtlSec': 3600,
-        'mail.rateLimitEnabled': false,
-      };
-      return defaults[key] ?? def;
-    });
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MailEnqueueService,
         {
-          provide: getRepositoryToken(MailAuditLogEntity),
+          provide: MailValidationService,
           useValue: {
-            save: mockSave,
-            findOne: mockFindOne,
-            findOneOrFail: mockFindOneOrFail,
-            update: mockUpdate,
-            create: mockCreate,
+            validateServiceEnabled: mockValidateServiceEnabled,
+            validateContentProvided: mockValidateContentProvided,
+            validateAndResolveSender: mockValidateAndResolveSender,
+            normalizeRecipients: mockNormalizeRecipients,
+            resolveMaxAttempts: mockResolveMaxAttempts,
+            normalizeAttachments: mockNormalizeAttachments,
           },
         },
-        { provide: CACHE_MANAGER, useValue: { get: mockCacheGet, set: mockCacheSet } },
-        { provide: ConfigService, useValue: { get: configGet } },
-        { provide: EventEmitter2, useValue: { emit: mockEmit } },
+        {
+          provide: MailIdempotencyService,
+          useValue: {
+            findByIdempotencyKey: mockFindByIdempotencyKey,
+            cacheMail: mockCacheMail,
+          },
+        },
+        {
+          provide: MailRateLimitService,
+          useValue: {
+            enforceLimit: mockEnforceLimit,
+          },
+        },
+        {
+          provide: MailAuditService,
+          useValue: {
+            createAuditLog: mockCreateAuditLog,
+            publishQueued: mockPublishQueued,
+          },
+        },
+        {
+          provide: MailRetryService,
+          useValue: {
+            requeue: mockRequeue,
+          },
+        },
+        {
+          provide: MailSuppressionService,
+          useValue: {
+            ensureRecipientsAreAllowed: mockEnsureRecipientsAreAllowed,
+          },
+        },
       ],
     }).compile();
+
     service = module.get(MailEnqueueService);
     jest.clearAllMocks();
-    configGet = jest.fn((key: string, def: unknown) => {
-      const defaults: Record<string, unknown> = {
-        'mail.enabled': true,
-        'mail.defaultFrom': 'no-reply@example.com',
-        'mail.maxAttempts': 3,
-        'mail.idempotencyTtlSec': 3600,
-        'mail.rateLimitEnabled': false,
-      };
-      return defaults[key] ?? def;
-    });
-    (service as any).configService = { get: configGet };
+
+    mockValidateAndResolveSender.mockReturnValue('no-reply@example.com');
+    mockNormalizeRecipients.mockReturnValue(['user@example.com']);
+    mockResolveMaxAttempts.mockReturnValue(3);
+    mockNormalizeAttachments.mockReturnValue(null);
+    mockFindByIdempotencyKey.mockResolvedValue(null);
+    mockCreateAuditLog.mockResolvedValue({ id: 'audit-1' });
   });
 
-  it('throws when mail is disabled', async () => {
-    configGet.mockImplementation((key: string, def: unknown) =>
-      key === 'mail.enabled' ? false : def,
-    );
-    await expect(
-      service.enqueue({ to: 'a@b.com', subject: 'Hi', text: 'body' }),
-    ).rejects.toThrow('disabled');
-  });
-
-  it('throws when no from address is configured', async () => {
-    configGet.mockImplementation((key: string, def: unknown) =>
-      key === 'mail.defaultFrom' ? '' : key === 'mail.enabled' ? true : def,
-    );
-    await expect(
-      service.enqueue({ to: 'a@b.com', subject: 'Hi', text: 'body' }),
-    ).rejects.toThrow('sender');
-  });
-
-  it('throws when neither text nor html is provided', async () => {
-    await expect(
-      service.enqueue({ to: 'a@b.com', subject: 'Hi' } as any),
-    ).rejects.toThrow('content format');
-  });
-
-  it('returns existing audit on idempotency cache hit', async () => {
-    const existing = makeAudit();
-    mockCacheGet.mockResolvedValue('audit-1');
-    mockFindOne.mockResolvedValue(existing);
+  it('enqueues a new mail and publishes queued event', async () => {
     const result = await service.enqueue({
-      to: 'a@b.com',
-      subject: 'Hi',
-      text: 'body',
-      idempotencyKey: 'key-1',
+      to: 'user@example.com',
+      subject: 'Hello',
+      text: 'Body',
+      idempotencyKey: 'mail-1',
     });
-    expect(mockSave).not.toHaveBeenCalled();
-    expect(result.id).toBe('audit-1');
+
+    expect(mockValidateServiceEnabled).toHaveBeenCalled();
+    expect(mockEnsureRecipientsAreAllowed).toHaveBeenCalledWith(['user@example.com']);
+    expect(mockEnforceLimit).toHaveBeenCalled();
+    expect(mockCreateAuditLog).toHaveBeenCalled();
+    expect(mockCacheMail).toHaveBeenCalledWith('mail-1', 'audit-1');
+    expect(mockPublishQueued).toHaveBeenCalledWith({ id: 'audit-1' });
+    expect(result).toEqual({ id: 'audit-1' });
   });
 
-  it('saves and emits event on successful enqueue', async () => {
-    const created = makeAudit();
-    mockCacheGet.mockResolvedValue(null);
-    mockFindOne.mockResolvedValue(null);
-    mockSave.mockResolvedValue(created);
-    const result = await service.enqueue({ to: 'a@b.com', subject: 'Hi', text: 'body' });
-    expect(mockSave).toHaveBeenCalledTimes(1);
-    expect(mockEmit).toHaveBeenCalledWith('mail.queued', expect.objectContaining({ id: 'audit-1' }));
-    expect(result.id).toBe('audit-1');
-  });
+  it('returns existing mail when idempotency key is already known', async () => {
+    mockFindByIdempotencyKey.mockResolvedValue({ id: 'existing-audit' });
 
-  it('requeue throws when mail is not in FAILED status', async () => {
-    mockFindOneOrFail.mockResolvedValue(makeAudit({ status: MailAuditStatus.SENT }));
-    await expect(service.requeue('audit-1')).rejects.toThrow('FAILED');
-  });
-
-  it('requeue resets status to PENDING for a FAILED mail', async () => {
-    const failed = makeAudit({ status: MailAuditStatus.FAILED, attempts: 3 });
-    mockFindOneOrFail.mockResolvedValueOnce(failed).mockResolvedValueOnce({
-      ...failed,
-      status: MailAuditStatus.PENDING,
+    const result = await service.enqueue({
+      to: 'user@example.com',
+      subject: 'Hello',
+      text: 'Body',
+      idempotencyKey: 'mail-1',
     });
-    mockUpdate.mockResolvedValue({ affected: 1 });
+
+    expect(mockCreateAuditLog).not.toHaveBeenCalled();
+    expect(result).toEqual({ id: 'existing-audit' });
+  });
+
+  it('delegates requeue operation to MailRetryService', async () => {
+    mockRequeue.mockResolvedValue({ id: 'audit-1', status: 'pending' });
+
     const result = await service.requeue('audit-1');
-    expect(mockUpdate).toHaveBeenCalledWith(
-      'audit-1',
-      expect.objectContaining({ status: MailAuditStatus.PENDING }),
-    );
-    expect(result.status).toBe(MailAuditStatus.PENDING);
+
+    expect(mockRequeue).toHaveBeenCalledWith('audit-1');
+    expect(result).toEqual({ id: 'audit-1', status: 'pending' });
   });
 });

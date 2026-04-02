@@ -6,6 +6,7 @@ import { MailIdempotencyService } from './mail-idempotency.service';
 import { MailRateLimitService } from './mail-rate-limit.service';
 import { MailAuditService } from './mail-audit.service';
 import { MailRetryService } from './mail-retry.service';
+import { MailSuppressionService } from './mail-suppression.service';
 
 /**
  * Orchestrates the mail enqueue process by coordinating with specialized services.
@@ -24,6 +25,7 @@ export class MailEnqueueService {
     private readonly rateLimitService: MailRateLimitService,
     private readonly auditService: MailAuditService,
     private readonly retryService: MailRetryService,
+    private readonly suppressionService: MailSuppressionService,
   ) {}
 
   /**
@@ -36,6 +38,7 @@ export class MailEnqueueService {
     this.validationService.validateContentProvided(options.text, options.html);
     const fromAddress = this.validationService.validateAndResolveSender(options.from);
     const recipients = this.validationService.normalizeRecipients(options.to);
+    await this.suppressionService.ensureRecipientsAreAllowed(recipients);
     const maxAttempts = this.validationService.resolveMaxAttempts(options.maxAttempts);
     const normalizedAttachments = this.validationService.normalizeAttachments(
       options.attachments,

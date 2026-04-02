@@ -11,6 +11,9 @@ const mockRetryFailed = jest.fn();
 const mockSendAsync = jest.fn();
 const mockSendTemplateAsync = jest.fn();
 const mockScheduleAsync = jest.fn();
+const mockSuppressRecipient = jest.fn();
+const mockUnsuppressRecipient = jest.fn();
+const mockListSuppressed = jest.fn();
 const mockPreviewTemplate = jest.fn();
 
 const fakeAudit = (): Partial<MailAuditLogEntity> => ({
@@ -39,6 +42,9 @@ describe('MailAuditController', () => {
             sendAsync: mockSendAsync,
             sendTemplateAsync: mockSendTemplateAsync,
             scheduleAsync: mockScheduleAsync,
+            suppressRecipient: mockSuppressRecipient,
+            unsuppressRecipient: mockUnsuppressRecipient,
+            listSuppressed: mockListSuppressed,
             previewTemplate: mockPreviewTemplate,
           },
         },
@@ -151,6 +157,20 @@ describe('MailAuditController', () => {
         scheduledFor: '2000-01-01T00:00:00.000Z',
       } as any),
     ).rejects.toThrow('scheduledFor must be a future date-time');
+  });
+
+  it('suppression routes delegate to mail service', async () => {
+    mockSuppressRecipient.mockResolvedValue({ email: 'user@example.com', active: true });
+    mockUnsuppressRecipient.mockResolvedValue({ updated: true });
+    mockListSuppressed.mockResolvedValue([]);
+
+    await controller.suppress({ email: 'user@example.com' });
+    await controller.unsuppress('user@example.com');
+    await controller.listSuppression('10');
+
+    expect(mockSuppressRecipient).toHaveBeenCalledWith('user@example.com', undefined, undefined);
+    expect(mockUnsuppressRecipient).toHaveBeenCalledWith('user@example.com');
+    expect(mockListSuppressed).toHaveBeenCalledWith(10);
   });
 
   it('preview returns html in development', () => {
