@@ -18,6 +18,20 @@ Secure and scalable NestJS starter focused on practical onboarding for open-sour
 - Docker and Docker Compose support
 - CI workflow, SAST, secret scanning, and security policy gate
 
+## Architecture
+
+The project follows a layered modular structure designed for scale.
+
+- `src/bootstrap`: composition root and app startup
+- `src/modules`: business modules split by layers (`application`, `domain`, `infrastructure`, `presentation`)
+- `src/infrastructure`: cross-module technical adapters (config, database, cache, messaging)
+- `src/shared`: shared contracts, constants, exceptions, and utilities
+- `src/interfaces`: transport channels (`http`, `events`, `workers`, `cli`)
+- `src/tests`: test architecture folders (`unit`, `integration`, `contract`, `e2e`)
+
+Detailed architecture guide: `docs/architecture/README.md`
+Migration roadmap: `docs/architecture/migration-plan.md`
+
 ## Quick Start
 
 1. Install dependencies:
@@ -103,7 +117,7 @@ Example service usage:
 
 ```ts
 import { Injectable } from '@nestjs/common';
-import { MailService } from './mail/mail.service';
+import { MailService } from './modules/mail/mail.service';
 
 @Injectable()
 export class ExampleNotifierService {

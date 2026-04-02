@@ -24,6 +24,28 @@ npm test
 - Validate all environment variables
 - Prefer secure defaults
 
+## Architecture Rules
+
+- Keep business logic in `src/modules/<module>/domain` and `src/modules/<module>/application`.
+- Keep controllers/DTOs in `presentation`.
+- Keep external adapters in `infrastructure`.
+- Avoid importing concrete infrastructure classes directly into domain/application.
+- Promote shared code to `src/shared` only when reused by more than one module.
+
+## Where to Create New Files
+
+- New use case: `src/modules/<module>/application`.
+- New domain policy/entity/value object: `src/modules/<module>/domain`.
+- New DB/provider adapter: `src/modules/<module>/infrastructure` or `src/infrastructure`.
+- New HTTP endpoint/DTO: `src/modules/<module>/presentation`.
+- New cross-module contract: `src/shared/contracts`.
+
+## Pull Request Checklist
+
+- Explain why the chosen layer is correct for each new file.
+- Include unit/integration/e2e evidence for affected behavior.
+- If architecture boundaries changed, update `docs/architecture/README.md`.
+
 ## Commit Convention
 
 Examples:

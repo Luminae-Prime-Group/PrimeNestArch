@@ -1,39 +1,50 @@
-# Migration Plan (Non-breaking)
+# Migration Plan
 
-## Current state
+## Current state (already done)
 
-The current implementation remains valid and untouched.
+- Structural relocation to layered folders is complete.
+- Bootstrap and main wrappers are in place for compatibility.
+- Infrastructure config/database and module folders are established.
 
-## Target state
+## Next target
 
-Converge to layered modules under `src/modules` and dedicated adapters under `src/infrastructure`.
+Consolidate behavior by enforcing layer boundaries and reducing legacy coupling.
 
-## Phase 1: New code policy
+## Phase 1: Contract-first application layer
 
-- Add only new use cases to `src/modules/<module>/application`.
-- Keep controllers in module `presentation`.
-- Keep external provider code in `infrastructure`.
+- Define module contracts (repositories/providers/publishers) in shared or module-level contracts.
+- Refactor use cases to depend on contracts only.
+- Keep Nest and TypeORM details outside `domain` and `application`.
 
-## Phase 2: Incremental extraction
+## Phase 2: Domain purity
 
-- Extract mail domain logic to `src/modules/mail/domain`.
-- Keep current mail APIs operational while introducing facades.
-- Move shared DTO validation utilities into `src/shared`.
+- Move business invariants/policies from services/controllers to `domain`.
+- Introduce value objects for critical primitives.
+- Ensure domain unit tests run without Nest container.
 
-## Phase 3: Interface segregation
+## Phase 3: Infrastructure hardening
 
-- Introduce explicit contracts in `src/shared/contracts`.
-- Depend on contracts from application/domain; wire adapters in bootstrap.
+- Make adapters explicit and swappable.
+- Centralize resilience concerns (retry, timeout, circuit breaker style) in infra adapters.
+- Keep persistence mappings/versioning encapsulated.
 
-## Phase 4: Test stratification
+## Phase 4: Interface segregation
 
-- Unit tests near module layers.
-- Integration tests under `src/tests/integration`.
-- Contract tests under `src/tests/contract`.
+- Keep HTTP concerns in presentation/interfaces only.
+- Isolate event/worker/cli handlers into `src/interfaces/*`.
+- Avoid leaking transport DTOs into domain/application.
 
-## Definition of done per migrated module
+## Phase 5: Test architecture alignment
 
-- No direct framework dependency in `domain`.
-- `application` coordinates use cases through contracts.
-- `infrastructure` contains all external IO details.
-- `presentation` maps transport details to use cases.
+- Unit tests: domain + application rules.
+- Integration tests: infrastructure adapter behavior.
+- Contract tests: boundary compatibility between modules/adapters.
+- E2E tests: critical business flows only.
+
+## Definition of done per module
+
+- Domain has no framework/ORM dependency.
+- Application orchestrates use cases through contracts.
+- Infrastructure contains concrete external IO concerns only.
+- Presentation maps transport DTOs and responses only.
+- Tests cover unit + integration paths for each critical use case.

@@ -1,43 +1,112 @@
-# Architecture Blueprint
+# Architecture Guide
 
-This project now includes a scalable folder scaffold without changing existing source files.
+This document describes the current architecture, the rules to keep it healthy, and practical examples for creating new features in a scalable way.
 
-## Principles
+## Goals
 
-- Keep current runtime stable.
-- Evolve by migration, not rewrite.
-- Isolate business rules from framework details.
-- Separate contracts, infrastructure, and interfaces.
+- Scale the codebase with predictable boundaries.
+- Reduce coupling between business rules and framework adapters.
+- Improve testability and change safety.
+- Keep delivery speed high without sacrificing maintainability.
 
-## Top-level structure
+## Current Structure
 
-- `src/bootstrap`: app startup and composition root.
-- `src/core`: cross-cutting business abstractions.
-- `src/shared`: shared kernel, utilities, contracts, constants, exceptions.
-- `src/modules`: business modules with layered boundaries.
-- `src/infrastructure`: adapters (database, cache, security, monitoring, messaging, mail).
-- `src/interfaces`: delivery mechanisms (http, events, workers, cli).
-- `src/tests`: unit, integration, contract, and e2e support.
+```text
+src/
+	bootstrap/         # application composition and startup
+	core/              # cross-module abstractions and policies
+	shared/            # shared kernel (contracts, constants, exceptions, utils)
+	modules/           # business modules
+		<module>/
+			application/   # use cases and orchestration
+			domain/        # business entities, value objects, policies
+			infrastructure/# providers, persistence, external adapters (module-local)
+			presentation/  # controllers, DTOs, presenters/view models
+	infrastructure/    # cross-module technical adapters (db, config, cache, etc.)
+	interfaces/        # transport/entrypoint channels (http/events/workers/cli)
+	tests/             # architecture-oriented test folders (unit/integration/contract/e2e)
+```
 
-## Module shape
+## Responsibilities by Layer
 
-Each module follows:
+### `domain`
 
-- `application`: use cases and orchestration.
-- `domain`: entities/value objects/policies/domain services.
-- `infrastructure`: persistence/provider adapters.
-- `presentation`: controllers/dto/view models.
+- Contains pure business logic.
+- Must not depend on NestJS, TypeORM, or transport details.
+- Prefer value objects and explicit invariants.
 
-## Migration approach
+### `application`
 
-1. Keep all existing files working in-place.
-2. Move one feature at a time to `src/modules/<feature>`.
-3. Keep backward-compatible exports during transition.
-4. Move shared helpers to `src/shared` only when reused by 2+ modules.
-5. Keep infra implementations in `src/infrastructure` and depend on contracts from `application/domain`.
+- Coordinates use cases and workflows.
+- Depends on contracts/interfaces, not concrete adapters.
+- Handles transaction-like orchestration decisions.
 
-## Governance
+### `infrastructure`
 
-- New features should start in `src/modules`.
-- Existing directories can be migrated gradually.
-- Prefer one architectural PR per module to reduce risk.
+- Implements contracts used by `application`.
+- Contains integration with DB, cache, SMTP, queues, providers.
+- Should be replaceable without changing business rules.
+
+### `presentation`
+
+- Maps input/output from transport to use case models.
+- Validation and serialization live here.
+- Should stay thin; no business decision logic.
+
+## How to Add a New Feature
+
+1. Create `src/modules/<feature>/application` use case service(s).
+2. Model core rules in `src/modules/<feature>/domain`.
+3. Add repository/provider adapter(s) in `src/modules/<feature>/infrastructure`.
+4. Expose endpoint/handler in `src/modules/<feature>/presentation`.
+5. Wire module dependencies in bootstrap/composition root.
+
+## Example Concepts
+
+### Example 1: New domain concept (`TimesheetPolicy`)
+
+- Place in `src/modules/<feature>/domain/timesheet.policy.ts`.
+- Keep it framework-free and deterministic.
+- Test as pure unit (no Nest container).
+
+### Example 2: New use case (`ApproveTimesheetUseCase`)
+
+- Place in `src/modules/<feature>/application/approve-timesheet.use-case.ts`.
+- Inject contracts like `TimesheetRepository` and `EventPublisher`.
+- Cover orchestration rules with unit tests and mocks.
+
+### Example 3: New API route (`POST /timesheets/:id/approve`)
+
+- Controller in `src/modules/<feature>/presentation`.
+- Validate DTO in presentation.
+- Call the use case and map response DTO.
+
+## Architecture Maintenance Rules
+
+- New business logic must start in `domain` or `application`, not controller/provider.
+- Avoid imports crossing module boundaries via implementation files.
+- Share only stable primitives in `src/shared`.
+- Keep `bootstrap` focused on composition, not business logic.
+- If a file grows beyond one responsibility, split by use case/adapter.
+
+## Benefits of This Model
+
+- Lower regression risk through clear boundaries.
+- Easier onboarding (where to put each concern is explicit).
+- Better parallel work across teams/modules.
+- Faster tests by isolating domain/application logic.
+- Easier technology replacement (infra adapters are isolated).
+
+## Anti-patterns to Avoid
+
+- Fat controllers with business decisions.
+- Domain classes depending on ORM decorators.
+- Global utils replacing explicit contracts.
+- Cross-module imports of concrete infrastructure services.
+
+## Decision Checklist (Before Merge)
+
+- Does this change add business rules? If yes, is it in `domain/application`?
+- Does this change call external systems? If yes, is it in `infrastructure`?
+- Does this change expose transport contract? If yes, is it in `presentation/interfaces`?
+- Are tests placed at the right level (unit/integration/contract/e2e)?
