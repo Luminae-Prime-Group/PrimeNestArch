@@ -1,12 +1,12 @@
-# Contributing
+# Contribuicao
 
-Thank you for contributing.
+Obrigado por contribuir com o projeto.
 
-## Development Flow
+## Fluxo de Desenvolvimento
 
-1. Fork and create a branch from `main`.
-2. Keep commits atomic and use Conventional Commits.
-3. Run checks before opening a PR:
+1. Faca fork e crie uma branch a partir de `main`.
+2. Mantenha commits atomicos e use Conventional Commits.
+3. Rode as validacoes antes de abrir PR:
 
 ```bash
 npm run lint:check
@@ -14,41 +14,42 @@ npm run build
 npm test
 ```
 
-4. If your change touches persistence, include migration files.
-5. Open a PR with context, risk analysis, and test evidence.
+4. Se a mudanca tocar persistencia, inclua migracoes.
+5. Abra PR com contexto, analise de risco e evidencia de testes.
 
-## Code Standards
+## Padrao de Codigo
 
-- TypeScript strictness and explicit types when needed
-- No hardcoded secrets
-- Validate all environment variables
-- Prefer secure defaults
+- TypeScript estrito e tipagem explicita quando necessario
+- Nenhum segredo hardcoded
+- Validar todas as variaveis de ambiente
+- Preferir defaults seguros
 
-## Architecture Rules
+## Regras de Arquitetura
 
-- Keep business logic in `src/modules/<module>/domain` and `src/modules/<module>/application`.
-- Keep controllers/DTOs in `presentation`.
-- Keep external adapters in `infrastructure`.
-- Avoid importing concrete infrastructure classes directly into domain/application.
-- Promote shared code to `src/shared` only when reused by more than one module.
+- Mantenha regra de negocio em `src/modules/<modulo>/domain` e `src/modules/<modulo>/application`.
+- Mantenha controllers e DTOs em `presentation`.
+- Mantenha adaptadores externos em `infrastructure`.
+- Evite importar classes concretas de infraestrutura diretamente em `domain/application`.
+- Promova codigo para `src/shared` apenas quando houver reuso real entre modulos.
 
-## Where to Create New Files
+## Onde Criar Novos Arquivos
 
-- New use case: `src/modules/<module>/application`.
-- New domain policy/entity/value object: `src/modules/<module>/domain`.
-- New DB/provider adapter: `src/modules/<module>/infrastructure` or `src/infrastructure`.
-- New HTTP endpoint/DTO: `src/modules/<module>/presentation`.
-- New cross-module contract: `src/shared/contracts`.
+- Novo caso de uso: `src/modules/<modulo>/application`.
+- Nova politica/entidade/value object de dominio: `src/modules/<modulo>/domain`.
+- Novo adaptador de banco/provider: `src/modules/<modulo>/infrastructure` ou `src/infrastructure`.
+- Novo endpoint HTTP/DTO: `src/modules/<modulo>/presentation`.
+- Novo contrato compartilhado: `src/shared/contracts`.
 
-## Pull Request Checklist
+## Checklist de Pull Request
 
-- Explain why the chosen layer is correct for each new file.
-- Include unit/integration/e2e evidence for affected behavior.
-- If architecture boundaries changed, update `docs/architecture/README.md`.
+- Explique por que cada arquivo novo esta na camada escolhida.
+- Inclua evidencia de testes unitarios/integracao/e2e para o comportamento alterado.
+- Se houver alteracao de fronteira arquitetural, atualize `docs/architecture/README.md`.
+- Se houver mudanca de contrato de API, atualize a documentacao principal.
 
-## Commit Convention
+## Convencao de Commits
 
-Examples:
+Exemplos:
 
 - `feat(auth): add refresh token rotation`
 - `fix(database): handle transaction rollback`

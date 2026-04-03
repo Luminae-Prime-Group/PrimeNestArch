@@ -1,50 +1,58 @@
-# Migration Plan
+# Plano de Migracao Arquitetural
 
-## Current state (already done)
+## Estado Atual (ja concluido)
 
-- Structural relocation to layered folders is complete.
-- Bootstrap and main wrappers are in place for compatibility.
-- Infrastructure config/database and module folders are established.
+- Reorganizacao estrutural para pastas por camadas foi concluida.
+- Bootstrap principal foi desacoplado em componentes menores.
+- Estruturas de infraestrutura (config, database, middleware) estao estabelecidas.
+- Modulo de e-mail foi quebrado em servicos mais coesos por responsabilidade.
 
-## Next target
+## Proximo Objetivo
 
-Consolidate behavior by enforcing layer boundaries and reducing legacy coupling.
+Consolidar fronteiras entre camadas para impedir regressao de acoplamento e manter crescimento previsivel por modulo.
 
-## Phase 1: Contract-first application layer
+## Fase 1: Camada de aplicacao orientada a contratos
 
-- Define module contracts (repositories/providers/publishers) in shared or module-level contracts.
-- Refactor use cases to depend on contracts only.
-- Keep Nest and TypeORM details outside `domain` and `application`.
+- Definir contratos por modulo (repositorios, providers, publicadores) em `shared` ou no proprio modulo.
+- Refatorar casos de uso para depender de contratos e nao de implementacoes concretas.
+- Isolar detalhes de Nest e TypeORM fora de `domain` e `application`.
 
-## Phase 2: Domain purity
+## Fase 2: Pureza de dominio
 
-- Move business invariants/policies from services/controllers to `domain`.
-- Introduce value objects for critical primitives.
-- Ensure domain unit tests run without Nest container.
+- Mover invariantes e politicas de negocio para `domain`.
+- Introduzir value objects para primitivas criticas.
+- Garantir testes unitarios de dominio sem container Nest.
 
-## Phase 3: Infrastructure hardening
+## Fase 3: Endurecimento de infraestrutura
 
-- Make adapters explicit and swappable.
-- Centralize resilience concerns (retry, timeout, circuit breaker style) in infra adapters.
-- Keep persistence mappings/versioning encapsulated.
+- Tornar adaptadores explicitos, substituiveis e testaveis.
+- Centralizar resiliencia (retry, timeout e politicas de fallback) em adaptadores de infraestrutura.
+- Encapsular mapeamentos de persistencia e versionamento de esquema.
 
-## Phase 4: Interface segregation
+## Fase 4: Segregacao de interfaces
 
-- Keep HTTP concerns in presentation/interfaces only.
-- Isolate event/worker/cli handlers into `src/interfaces/*`.
-- Avoid leaking transport DTOs into domain/application.
+- Manter preocupacoes HTTP somente em `presentation` e em `src/interfaces/http` quando aplicavel.
+- Isolar handlers de eventos, workers e CLI em `src/interfaces/*`.
+- Evitar vazamento de DTOs de transporte para `domain/application`.
 
-## Phase 5: Test architecture alignment
+## Fase 5: Alinhamento de testes
 
-- Unit tests: domain + application rules.
-- Integration tests: infrastructure adapter behavior.
-- Contract tests: boundary compatibility between modules/adapters.
-- E2E tests: critical business flows only.
+- Unitarios: regras de `domain` e orquestracao de `application`.
+- Integracao: comportamento de adaptadores de `infrastructure`.
+- Contrato: compatibilidade entre fronteiras de modulos e adaptadores.
+- E2E: fluxos criticos de negocio e seguranca.
 
-## Definition of done per module
+## Definicao de Pronto por Modulo
 
-- Domain has no framework/ORM dependency.
-- Application orchestrates use cases through contracts.
-- Infrastructure contains concrete external IO concerns only.
-- Presentation maps transport DTOs and responses only.
-- Tests cover unit + integration paths for each critical use case.
+- `domain` sem dependencia de framework/ORM.
+- `application` orquestrando casos de uso via contratos.
+- `infrastructure` contendo somente IO externo concreto.
+- `presentation` mapeando DTOs de entrada e respostas.
+- cobertura de testes minima para caminhos criticos unitarios e integrados.
+
+## Indicadores de Sucesso
+
+- reducao de arquivos com responsabilidades misturadas
+- menor necessidade de mocks acoplados ao framework em testes de regra
+- aumento de reutilizacao de casos de uso entre interfaces
+- diminuicao de regressao ao trocar detalhes de infraestrutura

@@ -1,112 +1,133 @@
-# Architecture Guide
+# Guia de Arquitetura
 
-This document describes the current architecture, the rules to keep it healthy, and practical examples for creating new features in a scalable way.
+Este documento descreve a arquitetura atual do projeto, os limites entre camadas e as regras praticas para evoluir a base sem reintroduzir acoplamento excessivo.
 
-## Goals
+## Objetivos
 
-- Scale the codebase with predictable boundaries.
-- Reduce coupling between business rules and framework adapters.
-- Improve testability and change safety.
-- Keep delivery speed high without sacrificing maintainability.
+- manter fronteiras previsiveis entre regra de negocio e adaptadores tecnicos
+- facilitar testes e manutencao
+- reduzir arquivos com responsabilidades misturadas
+- permitir crescimento por modulo sem degradar legibilidade
 
-## Current Structure
+## Estrutura Atual
 
 ```text
 src/
-	bootstrap/         # application composition and startup
-	core/              # cross-module abstractions and policies
-	shared/            # shared kernel (contracts, constants, exceptions, utils)
-	modules/           # business modules
-		<module>/
-			application/   # use cases and orchestration
-			domain/        # business entities, value objects, policies
-			infrastructure/# providers, persistence, external adapters (module-local)
-			presentation/  # controllers, DTOs, presenters/view models
-	infrastructure/    # cross-module technical adapters (db, config, cache, etc.)
-	interfaces/        # transport/entrypoint channels (http/events/workers/cli)
-	tests/             # architecture-oriented test folders (unit/integration/contract/e2e)
+  main.ts               # entrada da aplicacao
+  bootstrap/            # composicao e inicializacao da app
+  core/                 # abstracoes e componentes centrais compartilhados
+  shared/               # constantes, contratos, excecoes e utilitarios comuns
+  modules/              # modulos de negocio
+    <modulo>/
+      application/      # casos de uso e orquestracao
+      domain/           # regras de negocio puras
+      infrastructure/   # adaptadores e integracoes locais ao modulo
+      presentation/     # controllers, DTOs e modelos de resposta
+  infrastructure/       # adaptadores tecnicos transversais
+  interfaces/           # entradas alternativas: http, events, workers e cli
+tests/
+test/
 ```
 
-## Responsibilities by Layer
+## Responsabilidade por Camada
 
-### `domain`
+### domain
 
-- Contains pure business logic.
-- Must not depend on NestJS, TypeORM, or transport details.
-- Prefer value objects and explicit invariants.
+- concentra regra de negocio pura
+- nao deve depender de NestJS, TypeORM, Express ou detalhes de transporte
+- deve preservar invariantes explicitas e comportamento deterministico
 
-### `application`
+### application
 
-- Coordinates use cases and workflows.
-- Depends on contracts/interfaces, not concrete adapters.
-- Handles transaction-like orchestration decisions.
+- orquestra casos de uso e fluxos do modulo
+- coordena validacoes, idempotencia, retry, consultas e persistencia via contratos e servicos dedicados
+- nao deve receber responsabilidade de transporte HTTP nem detalhes de framework alem do necessario para injecao
 
-### `infrastructure`
+### infrastructure
 
-- Implements contracts used by `application`.
-- Contains integration with DB, cache, SMTP, queues, providers.
-- Should be replaceable without changing business rules.
+- implementa integracoes com banco, cache, SMTP, mensageria e observabilidade
+- concentra detalhes tecnicos substituiveis
+- deve servir a aplicacao, nao decidir regra de negocio principal
 
-### `presentation`
+### presentation
 
-- Maps input/output from transport to use case models.
-- Validation and serialization live here.
-- Should stay thin; no business decision logic.
+- recebe e valida entrada externa
+- mapeia DTOs, query params, headers e respostas
+- deve permanecer fina, delegando a regra para `application`
 
-## How to Add a New Feature
+## Organizacao Recomendada por Modulo
 
-1. Create `src/modules/<feature>/application` use case service(s).
-2. Model core rules in `src/modules/<feature>/domain`.
-3. Add repository/provider adapter(s) in `src/modules/<feature>/infrastructure`.
-4. Expose endpoint/handler in `src/modules/<feature>/presentation`.
-5. Wire module dependencies in bootstrap/composition root.
+Use a seguinte regra ao criar ou expandir um modulo em `src/modules/<modulo>`:
 
-## Example Concepts
+1. Coloque regras puras e invariantes em `domain`.
+2. Coloque casos de uso e servicos de orquestracao em `application`.
+3. Coloque persistencia, providers e integracoes locais em `infrastructure`.
+4. Coloque controllers, DTOs e view models em `presentation`.
+5. Exporte apenas contratos estaveis e pontos de entrada necessarios.
 
-### Example 1: New domain concept (`TimesheetPolicy`)
+## Exemplo Pratico: Modulo de E-mail
 
-- Place in `src/modules/<feature>/domain/timesheet.policy.ts`.
-- Keep it framework-free and deterministic.
-- Test as pure unit (no Nest container).
+O modulo de e-mail e hoje a melhor referencia de organizacao interna da base:
 
-### Example 2: New use case (`ApproveTimesheetUseCase`)
+- `application` separa responsabilidades como validacao, idempotencia, rate limit, auditoria, suppression e webhook
+- `infrastructure` concentra dispatch SMTP, gerenciamento de jobs e renderizacao de templates
+- `presentation` expõe endpoints de auditoria, envio, agendamento, suppression e webhook
+- `mail.service.ts` funciona como facade fina para o resto da aplicacao
 
-- Place in `src/modules/<feature>/application/approve-timesheet.use-case.ts`.
-- Inject contracts like `TimesheetRepository` and `EventPublisher`.
-- Cover orchestration rules with unit tests and mocks.
+Esse padrao deve ser repetido em novos modulos quando houver crescimento de complexidade.
 
-### Example 3: New API route (`POST /timesheets/:id/approve`)
+## Regras de Manutencao Arquitetural
 
-- Controller in `src/modules/<feature>/presentation`.
-- Validate DTO in presentation.
-- Call the use case and map response DTO.
+- logica de negocio nova deve nascer em `domain` ou `application`
+- controllers nao devem conter decisao de negocio alem de validacao superficial de entrada
+- `bootstrap` deve apenas compor a app, registrar middlewares e configurar integracoes globais
+- `shared` deve conter apenas primitivas estaveis e reaproveitaveis
+- imports entre modulos devem evitar dependencias em arquivos concretos de infraestrutura sempre que houver contrato mais apropriado
+- se um servico acumular multiplas responsabilidades, ele deve ser quebrado em servicos menores e coesos
 
-## Architecture Maintenance Rules
+## Fluxo Recomendado para Novas Features
 
-- New business logic must start in `domain` or `application`, not controller/provider.
-- Avoid imports crossing module boundaries via implementation files.
-- Share only stable primitives in `src/shared`.
-- Keep `bootstrap` focused on composition, not business logic.
-- If a file grows beyond one responsibility, split by use case/adapter.
+1. Defina o comportamento esperado e os invariantes do dominio.
+2. Modele o caso de uso em `application`.
+3. Implemente adaptadores tecnicos necessarios em `infrastructure`.
+4. Exponha a funcionalidade em `presentation` com DTOs claros.
+5. Registre providers e imports no modulo.
+6. Cubra o fluxo com testes no nivel correto.
 
-## Benefits of This Model
+## Onde Colocar Cada Tipo de Mudanca
 
-- Lower regression risk through clear boundaries.
-- Easier onboarding (where to put each concern is explicit).
-- Better parallel work across teams/modules.
-- Faster tests by isolating domain/application logic.
-- Easier technology replacement (infra adapters are isolated).
+### Nova regra de negocio
 
-## Anti-patterns to Avoid
+Coloque em `domain` ou em um servico de caso de uso dentro de `application`.
 
-- Fat controllers with business decisions.
-- Domain classes depending on ORM decorators.
-- Global utils replacing explicit contracts.
-- Cross-module imports of concrete infrastructure services.
+### Nova integracao externa
 
-## Decision Checklist (Before Merge)
+Coloque em `infrastructure`, mantendo interface clara para consumo da aplicacao.
 
-- Does this change add business rules? If yes, is it in `domain/application`?
-- Does this change call external systems? If yes, is it in `infrastructure`?
-- Does this change expose transport contract? If yes, is it in `presentation/interfaces`?
-- Are tests placed at the right level (unit/integration/contract/e2e)?
+### Novo endpoint HTTP
+
+Coloque controller e DTOs em `presentation`, com delegacao imediata para um servico de `application`.
+
+### Novo middleware global
+
+Coloque em `src/infrastructure` ou `src/bootstrap`, dependendo se ele e apenas configuracao global ou um adaptador tecnico compartilhado.
+
+## Anti-patterns a Evitar
+
+- controllers gordos com regras de negocio
+- servicos unicos que validam, persistem, integram e formatam resposta ao mesmo tempo
+- helpers globais escondendo dependencia importante
+- importacao direta de implementacoes concretas de outro modulo quando um contrato resolveria
+- entidades de dominio acopladas desnecessariamente a detalhes de transporte
+
+## Checklist Antes de Merge
+
+- a regra de negocio nova ficou fora de controller e middleware?
+- a integracao externa ficou em `infrastructure`?
+- DTOs e mapeamentos ficaram em `presentation`?
+- a composicao ficou em `bootstrap` ou no modulo, sem logica de negocio?
+- os testes foram adicionados no nivel certo: unitario, integracao, contrato ou e2e?
+
+## Resultado Esperado
+
+Quando essas regras sao seguidas, o projeto fica mais previsivel para evoluir, mais facil de testar e menos sujeito a regressao por acoplamento acidental.
