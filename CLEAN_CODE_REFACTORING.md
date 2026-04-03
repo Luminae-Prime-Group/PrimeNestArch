@@ -1,6 +1,6 @@
 # Clean Code Refactoring Report
 
-Este documento resume as refatorações de clean code aplicadas ao projeto PontoPrimeBackend.
+Este documento resume as refatorações de clean code aplicadas ao projeto PrimeNestArch.
 
 ## 📋 Resumo Executivo
 

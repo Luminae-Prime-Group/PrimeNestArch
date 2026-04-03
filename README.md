@@ -1,4 +1,4 @@
-# PontoPrimeBackend
+# PrimeNestArch
 
 Backend em NestJS 11 com arquitetura modular em camadas, baseline de seguranca, observabilidade e um modulo de e-mail orientado a fila, auditoria e integracoes operacionais.
 
@@ -304,7 +304,7 @@ export class ExampleNotifierService {
 	async sendWelcomeEmail(email: string, name: string) {
 		await this.mailService.sendTemplateAsync({
 			to: email,
-			subject: 'Bem-vindo ao PontoPrimeBackend',
+			subject: 'Bem-vindo ao PrimeNestArch',
 			template: '<h1>Ola, {{name}}!</h1><p>Sua conta foi criada com sucesso.</p>',
 			context: { name },
 			correlationId: 'user-signup-flow',
